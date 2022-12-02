@@ -1,0 +1,14 @@
+﻿<div class="mb-3">
+    <div class="input-group">
+        <div class="input-group-prepend">
+            <label class="input-group-text" for=@Id><b>@LabelText</b></label>
+        </div>
+        <input type="text" readonly class="form-control readonly-input" name=@Id id=@Id value=@DisplayValue />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string? DisplayValue { get; set; }
+    [Parameter, EditorRequired] public string? Id { get; set; }
+    [Parameter, EditorRequired] public string? LabelText { get; set; }
+}

@@ -1,0 +1,24 @@
+﻿@using ExampleApp.Shared.Models;
+
+@if (LoanDetails is null)
+{
+    <p id="nodata">No data was returned.</p>
+}
+else
+{
+    <p class="mb-4"><b>Your application was submitted successfully and will now be evaluated:</b></p>
+
+    <div class="question-modal">
+        <ReadOnlyInput Id="credit" DisplayValue=@LoanDetails.LoanAmount LabelText="Amount of Credit" />
+
+        <ReadOnlyInput Id="payable" DisplayValue=@LoanDetails.TotalAmountPayable LabelText="Total Amount Payable" />
+
+        <ReadOnlyInput Id="repayments" DisplayValue=@LoanDetails.Repayments LabelText="Repayments" />
+
+        <ReadOnlyInput Id="apr" DisplayValue=@LoanDetails.APR LabelText="APR" />
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public LoanDetailsDTO? LoanDetails { get; set; }
+}

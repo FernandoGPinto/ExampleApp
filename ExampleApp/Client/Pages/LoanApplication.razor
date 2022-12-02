@@ -1,0 +1,186 @@
+﻿@page "/loanapplication"
+
+@using ExampleApp.Client.Components;
+@using ExampleApp.Shared;
+@using ExampleApp.Shared.Models;
+@using ExampleApp.Shared.Interfaces;
+@using ExampleApp.Shared.Enums;
+@using CurrieTechnologies.Razor.SweetAlert2;
+
+@inject ILoanApplicationService LoanApplicationService;
+@inject NavigationManager NavManager;
+@inject SweetAlertService Swal;
+
+<PageTitle>Loan Application</PageTitle>
+
+<h1>Loan Application Form</h1>
+
+<EditForm Model="@CustomerApplication" OnValidSubmit="@SubmitApplication" class="mt-4 mb-4">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <fieldset>
+        <div>
+            @*Title*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text required-field" for="title">Please select you title</label>
+                    </div>
+                    <InputSelect class="custom-select" name="title" id="title" @bind-Value="CustomerApplication.Title">
+                        <option value="">Select Title</option>
+                        @foreach (string value in Enum.GetNames(typeof(Titles)))
+                        {
+                            <option value="@value">@value</option>
+                        }
+                    </InputSelect>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.Title)" />
+            </div>
+
+            @*Full Name*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text required-field" for="fullname">Full Name</label>
+                    </div>
+                    <InputText class="form-control" name="fullname" id="fullname" @bind-Value="CustomerApplication.FullName"></InputText>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.FullName)" />
+            </div>
+
+            @*Address*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text required-field" for="address">Address</label>
+                    </div>
+                    <InputText class="form-control" name="address" id="address" @bind-Value="CustomerApplication.Address"></InputText>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.Address)" />
+            </div>
+
+            @*Annual Income*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text required-field" for="income">Annual Income (£)</label>
+                    </div>
+                    <InputNumber class="form-control" name="income" id="income" @bind-Value="CustomerApplication.AnnualIncome"></InputNumber>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.AnnualIncome)" />
+            </div>
+
+            @*Home Owner*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text required-field" for="homeowner">Are you a home owner?</label>
+                    </div>
+                    <InputSelect class="custom-select" name="homeowner" id="homeowner" @bind-Value="CustomerApplication.HomeOwner">
+                        <option value="">Select Answer (Yes/No)</option>
+                        <option value="True">Yes</option>
+                        <option value="False">No</option>
+                    </InputSelect>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.HomeOwner)" />
+            </div>
+
+            @*Car Registration*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text" for="registration">Car Registration</label>
+                    </div>
+                    <InputText class="form-control" name="registration" id="registration" @bind-Value="CustomerApplication.CarRegistration"></InputText>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.CarRegistration)" />
+            </div>
+
+            @*Annual Income*@
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text required-field" for="loan">Loan amount requested (£)</label>
+                    </div>
+                    <InputNumber class="form-control" name="loan" id="loan" @bind-Value="CustomerApplication.LoanRequestAmount"></InputNumber>
+                </div>
+                <ValidationMessage For="@(() => CustomerApplication.LoanRequestAmount)" />
+            </div>
+        </div>
+        <button type="submit" value="Submit" id="submitButton" class="btn btn-primary">
+            @if (_isLoading)
+            {
+                <span class="spinner-border spinner-border-sm mr-1"></span>
+            }
+            Submit
+        </button>
+        <button type="button" value="Cancel" class="btn btn-danger" onclick=@CancelSubmit>Cancel</button>
+    </fieldset>
+</EditForm>
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; }
+
+    public CustomerApplicationDTO? CustomerApplication = new();
+    private LoanDetailsDTO? loanDetails;
+
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+
+    private bool _isLoading = false;
+
+    /// <summary>
+    /// Saves loan application and displays result.
+    /// </summary>
+    private async void SubmitApplication()
+    {
+        _isLoading = true;
+        try
+        {
+            loanDetails = await LoanApplicationService.SaveApplication(CustomerApplication, _cancellationTokenSource.Token);
+        }
+        catch (TaskCanceledException e)
+        {
+            // If user has cancelled submission, display message and navigate to home page
+            await Swal.FireAsync(message: "Submission Cancelled", icon: "info");
+            NavManager.NavigateTo("/");
+            return;
+        }
+        _isLoading = false;
+        await InvokeAsync(StateHasChanged);
+
+        // Display modal with loan details returned by server
+        var parameters = new ModalParameters();
+        parameters.Add("LoanDetails", loanDetails);
+        DisplayModal(parameters);
+    }
+
+    /// <summary>
+    /// Cancels token, which is propagated to server to cancel submission.
+    /// </summary>
+    private void CancelSubmit()
+    {
+        // If the loan details have not been returned by the server we can still cancel the submission
+        if(loanDetails is null)
+        {
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Triggers Submission Modal to display loan details passed in.
+    /// </summary>
+    /// <param name="parameters"></param>
+    private async void DisplayModal(ModalParameters parameters)
+    {        
+        var options = new ModalOptions()
+        {
+            Animation = ModalAnimation.FadeIn(1)
+        };
+
+        var questionModal = Modal.Show<SubmissionModal>("Loan Application Details", parameters, options);
+        var result = await questionModal.Result;
+        
+        NavManager.NavigateTo("/");
+    }
+}
